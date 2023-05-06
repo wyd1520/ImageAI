@@ -294,7 +294,7 @@ class DetectionModelTrainer:
                                                 self.__model, self.__val_loader,
                                                 self.__num_classes, device=self.__device
                                             )
-                    
+
                     print(f"    recall: {mr:0.6f} precision: {mp:0.6f} mAP@0.5: {map50:0.6f}, mAP@0.5-0.95: {map50_95:0.6f}" "\n")
 
                     if map50 > best_fitness:
@@ -328,7 +328,7 @@ class CustomObjectDetection:
     def __init__(self) -> None:
         self.__device = "cuda" if torch.cuda.is_available() else "cpu"
         self.__anchors: List[int] = None
-        self.__classes: List[str] = None 
+        self.__classes: List[str] = None
         self.__model = None
         self.__model_loaded: bool = False
         self.__model_path: str = None
@@ -336,7 +336,7 @@ class CustomObjectDetection:
         self.__model_type: str = None
         self.__nms_score = 0.4
         self.__objectness_score = 0.4
-    
+
     def setModelTypeAsYOLOv3(self) -> None:
         """
         'setModelTypeAsYOLOv3()' is used to set the model type to the YOLOv3 model.
@@ -350,7 +350,7 @@ class CustomObjectDetection:
         :return:
         """
         self.__model_type = "tiny-yolov3"
-    
+
     def setModelPath(self, model_path: str):
         if os.path.isfile(model_path):
             extension_check(model_path)
@@ -361,10 +361,10 @@ class CustomObjectDetection:
                         "invalid path, path not pointing to the weightfile."
                     ) from None
         self.__model_path = model_path
-    
+
     def setJsonPath(self, configuration_json: str):
         self.__json_path = configuration_json
-    
+
     def __load_classes_and_anchors(self) -> List[str]:
 
         with open(self.__json_path) as f:
@@ -395,15 +395,15 @@ class CustomObjectDetection:
             img = np.asarray(input_image)
         else:
             raise ValueError(f"Invalid image input format")
-        
+
         img_h, img_w, _ = img.shape
 
         original_imgs.append(np.array(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).astype(np.uint8))
         original_dims.append((img_w, img_h))
         if type(input_image) == str:
-            fnames.append(os.path.basename(input_image)) 
+            fnames.append(os.path.basename(input_image))
         else:
-            fnames.append("") 
+            fnames.append("")
         inputs.append(prepare_image(img, (416, 416)))
 
         if original_dims:
@@ -418,7 +418,7 @@ class CustomObjectDetection:
                     "\nEnsure the file is a valid image,"
                     " allowed file extensions are .jpg, .jpeg, .png"
                 )
-    
+
     def useCPU(self):
         """
         Used to force classification to be done on CPU.
@@ -429,7 +429,7 @@ class CustomObjectDetection:
         if self.__model_loaded:
             self.__model_loaded = False
             self.loadModel()
-    
+
     def loadModel(self) -> None:
         """
         Loads the pretrained weights in the specified model path.
@@ -450,7 +450,7 @@ class CustomObjectDetection:
             )
         else:
             raise ValueError(f"Invalid model type. Call setModelTypeAsYOLOv3() or setModelTypeAsTinyYOLOv3() to set a model type before loading the model")
-                            
+
         self.__model.to(self.__device)
 
         state_dict = torch.load(self.__model_path, map_location=self.__device)
@@ -490,10 +490,10 @@ class CustomObjectDetection:
         :returns: A list of tuples containing the label of detected object and the
         confidence.
         """
-        
+
         self.__nms_score = nms_treshold
         self.__objectness_score = objectness_treshold
-        
+
         self.__model.eval()
         if not self.__model_loaded:
             if self.__model_path:
@@ -506,22 +506,22 @@ class CustomObjectDetection:
                 raise RuntimeError(
                         "Model path isn't set, pretrained weights aren't used."
                     )
-        
+
         predictions = defaultdict(lambda : [])
-        
+
 
         if self.__model_type == "yolov3" or self.__model_type == "tiny-yolov3":
             fnames, original_imgs, input_dims, imgs = self.__load_image_yolo(input_image)
-            
+
             with torch.no_grad():
                 output = self.__model(imgs)
-            
+
             output = get_predictions(
                     pred=output.to(self.__device), num_classes=len(self.__classes),
                     nms_confidence_level=self.__nms_score, objectness_confidence= self.__objectness_score,
                     device=self.__device
                 )
-            
+
             if output is None:
                 if output_type == "array":
                     if extract_detected_objects:
@@ -533,7 +533,7 @@ class CustomObjectDetection:
                         return original_imgs[0], []
                     else:
                         return []
-            
+
             # scale the output to match the dimension of the original image
             input_dims = torch.index_select(input_dims, 0, output[:, 0].long())
             scaling_factor = torch.min(416 / input_dims, 1)[0].view(-1, 1)
@@ -559,7 +559,7 @@ class CustomObjectDetection:
                         float(pred[-2]),
                         {k:v for k,v in zip(["x1", "y1", "x2", "y2"], map(int, pred[1:5]))},
                     ))
-        
+
         # Render detection on copy of input image
         original_input_image = None
         output_image_array = None
@@ -580,9 +580,11 @@ class CustomObjectDetection:
                         displayed_label += f" {percentage_conf}%"
 
 
-                    original_imgs[int(pred[0].item())] = draw_bbox_and_label(pred[1:5].int() if display_box else None,
+                    original_imgs[int(pred[0].item())] = draw_bbox_and_label(pred[1:5].int(),
                         displayed_label,
-                        original_imgs[int(pred[0].item())]
+                        original_imgs[int(pred[0].item())],
+                        display_box
+
                     )
                 output_image_array = cv2.cvtColor(original_imgs[0], cv2.COLOR_RGB2BGR)
 
@@ -600,11 +602,11 @@ class CustomObjectDetection:
                     extraction_dir = ".".join(output_image_path.split(".")[:-1]) + "-extracted"
                     os.mkdir(extraction_dir)
                     count = 0
-                    for obj_prediction in predictions_list: 
+                    for obj_prediction in predictions_list:
                         if obj_prediction[1] >= min_probability:
                             count += 1
                             extracted_path = os.path.join(
-                                extraction_dir, 
+                                extraction_dir,
                                 ".".join(os.path.basename(output_image_path).split(".")[:-1]) + f"-{count}.jpg"
                             )
                             obj_bbox = obj_prediction[2]
@@ -614,7 +616,7 @@ class CustomObjectDetection:
 
         elif output_type == "array":
             if extract_detected_objects:
-                for obj_prediction in predictions_list: 
+                for obj_prediction in predictions_list:
                     if obj_prediction[1] >= min_probability:
                         obj_bbox = obj_prediction[2]
 
@@ -622,7 +624,7 @@ class CustomObjectDetection:
         else:
             raise ValueError(f"Invalid output_type '{output_type}'. Supported values are 'file' and 'array' ")
 
-        
+
         predictions_list = [
             {
                 "name": prediction[0], "percentage_probability": round(prediction[1] * 100, 2),
@@ -662,20 +664,20 @@ class CustomVideoObjectDetection:
 
     def setModelTypeAsYOLOv3(self):
         self.__detector.setModelTypeAsYOLOv3()
-    
+
     def setModelTypeAsTinyYOLOv3(self):
         self.__detector.setModelTypeAsTinyYOLOv3()
 
     def setModelPath(self, model_path: str):
         extension_check(model_path)
         self.__detector.setModelPath(model_path)
-    
+
     def setJsonPath(self, configuration_json: str):
         self.__detector.setJsonPath(configuration_json)
 
     def loadModel(self):
         self.__detector.loadModel()
-    
+
     def useCPU(self):
         self.__detector.useCPU()
 
@@ -816,10 +818,10 @@ class CustomVideoObjectDetection:
                                 display_percentage_probability=display_percentage_probability,
                                 display_object_name=display_object_name,
                                 display_box=display_box)
-                            
+
                         except Exception as e:
                             warnings.warn()
-                    
+
                     if (save_detected_video == True):
                         output_video.write(detected_copy)
 
@@ -944,4 +946,3 @@ class CustomVideoObjectDetection:
             if (save_detected_video == True):
                 return output_video_filepath
 
-            

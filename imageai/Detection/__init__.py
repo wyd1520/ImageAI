@@ -39,6 +39,7 @@ class ImageReadMode(Enum):
     RGB = 3
     RGB_ALPHA = 4
 
+
 class ObjectDetection:
     """
     This is the object detection class for images in the ImageAI library. It allows you to detect the 80 objects in the COCO dataset [ https://cocodataset.org/#home ] in any image. 
@@ -58,6 +59,7 @@ class ObjectDetection:
 
     * detectObjectsFromImage: Used to perform object detection on an image
     """
+
     def __init__(self) -> None:
         self.__device: str = "cuda" if torch.cuda.is_available() else "cpu"
         self.__nms_score: float = 0.4
@@ -65,19 +67,19 @@ class ObjectDetection:
         self.__anchors: List[int] = None
         self.__anchors_yolov3: List[int] = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
         self.__anchors_tiny_yolov3: List[int] = [10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319]
-                          
+
         self.__classes = self.__load_classes(os.path.join(os.path.dirname(os.path.abspath(__file__)), "coco_classes.txt"))
         self.__model_type = ""
         self.__model = None
         self.__model_loaded = False
         self.__model_path = ""
-    
+
     def __load_classes(self, path: str) -> List[str]:
         with open(path) as f:
             unique_classes = [c.strip() for c in f.readlines()]
         return unique_classes
 
-    def __load_image_yolo(self, input_image : Union[str, np.ndarray, Image.Image]) -> Tuple[List[str], List[np.ndarray], torch.Tensor, torch.Tensor]:
+    def __load_image_yolo(self, input_image: Union[str, np.ndarray, Image.Image]) -> Tuple[List[str], List[np.ndarray], torch.Tensor, torch.Tensor]:
         allowed_exts = ["jpg", "jpeg", "png"]
         fnames = []
         original_dims = []
@@ -95,36 +97,36 @@ class ObjectDetection:
             img = np.asarray(input_image)
         else:
             raise ValueError(f"Invalid image input format")
-        
+
         img_h, img_w, _ = img.shape
 
         original_imgs.append(np.array(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).astype(np.uint8))
         original_dims.append((img_w, img_h))
         if type(input_image) == str:
-            fnames.append(os.path.basename(input_image)) 
+            fnames.append(os.path.basename(input_image))
         else:
-            fnames.append("") 
+            fnames.append("")
         inputs.append(prepare_image(img, (416, 416)))
 
         if original_dims:
             return (
-                    fnames,
-                    original_imgs,
-                    torch.FloatTensor(original_dims).repeat(1,2).to(self.__device),
-                    torch.cat(inputs, 0).to(self.__device)
-                    )
+                fnames,
+                original_imgs,
+                torch.FloatTensor(original_dims).repeat(1, 2).to(self.__device),
+                torch.cat(inputs, 0).to(self.__device)
+            )
         raise RuntimeError(
-                    f"Error loading image."
-                    "\nEnsure the file is a valid image,"
-                    " allowed file extensions are .jpg, .jpeg, .png"
-                )
-    
-    def __save_temp_img(self, input_image : Union[np.ndarray, Image.Image]) -> str:
+            f"Error loading image."
+            "\nEnsure the file is a valid image,"
+            " allowed file extensions are .jpg, .jpeg, .png"
+        )
+
+    def __save_temp_img(self, input_image: Union[np.ndarray, Image.Image]) -> str:
 
         temp_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            f"{str(uuid.uuid4())}.jpg" 
-        ) 
+            f"{str(uuid.uuid4())}.jpg"
+        )
         if type(input_image) == np.ndarray:
             cv2.imwrite(temp_path, input_image)
         elif "PIL" in str(type(input_image)):
@@ -136,7 +138,7 @@ class ObjectDetection:
 
         return temp_path
 
-    def __load_image_retinanet(self, input_image : str) -> Tuple[List[str], List[torch.Tensor], List[torch.Tensor]]:
+    def __load_image_retinanet(self, input_image: str) -> Tuple[List[str], List[torch.Tensor], List[torch.Tensor]]:
         """
         Loads image from the given path.
         """
@@ -144,12 +146,11 @@ class ObjectDetection:
         images = []
         scaled_images = []
         fnames = []
-        
+
         delete_file = False
         if type(input_image) is not str:
             input_image = self.__save_temp_img(input_image=input_image)
             delete_file = True
-
 
         if os.path.isfile(input_image):
             if input_image.rsplit('.')[-1].lower() in allowed_file_extensions:
@@ -162,15 +163,15 @@ class ObjectDetection:
 
         if delete_file:
             os.remove(input_image)
-        
+
         if images:
             return (fnames, images, scaled_images)
         raise RuntimeError(
-                    f"Error loading image from input."
-                    "\nEnsure the folder contains images,"
-                    " allowed file extensions are .jpg, .jpeg, .png"
-                )
-    
+            f"Error loading image from input."
+            "\nEnsure the folder contains images,"
+            " allowed file extensions are .jpg, .jpeg, .png"
+        )
+
     def setModelTypeAsYOLOv3(self):
         """
         'setModelTypeAsYOLOv3()' is used to set the model type to the YOLOv3 model.
@@ -178,7 +179,7 @@ class ObjectDetection:
         """
         self.__anchors = self.__anchors_yolov3
         self.__model_type = "yolov3"
-    
+
     def setModelTypeAsTinyYOLOv3(self):
         """
         'setModelTypeAsTinyYOLOv3()' is used to set the model type to the TinyYOLOv3 model.
@@ -186,7 +187,7 @@ class ObjectDetection:
         """
         self.__anchors = self.__anchors_tiny_yolov3
         self.__model_type = "tiny-yolov3"
-    
+
     def setModelTypeAsRetinaNet(self):
         """
         'setModelTypeAsRetinaNet()' is used to set the model type to the RetinaNet model.
@@ -208,9 +209,9 @@ class ObjectDetection:
             self.__model_loaded = False
         else:
             raise ValueError(
-                        "invalid path, path not pointing to a valid file."
-                    ) from None
-    
+                "invalid path, path not pointing to a valid file."
+            ) from None
+
     def useCPU(self):
         """
         Used to force classification to be done on CPU.
@@ -221,7 +222,7 @@ class ObjectDetection:
         if self.__model_loaded:
             self.__model_loaded = False
             self.loadModel()
-    
+
     def loadModel(self) -> None:
         """
         'loadModel()' function is used to load the model weights into the model architecture from the file path defined
@@ -229,26 +230,26 @@ class ObjectDetection:
         :return:
         """
         if not self.__model_loaded:
-            if self.__model_type=="yolov3":
+            if self.__model_type == "yolov3":
                 self.__model = YoloV3(
-                        anchors=self.__anchors ,
-                        num_classes=len(self.__classes),\
-                        device=self.__device
-                    )
-            elif self.__model_type=="tiny-yolov3":
+                    anchors=self.__anchors,
+                    num_classes=len(self.__classes), \
+                    device=self.__device
+                )
+            elif self.__model_type == "tiny-yolov3":
                 self.__model = YoloV3Tiny(
                     anchors=self.__anchors,
                     num_classes=len(self.__classes),
                     device=self.__device
-                    )
-            elif self.__model_type=="retinanet":
+                )
+            elif self.__model_type == "retinanet":
 
                 self.__classes = self.__load_classes(os.path.join(os.path.dirname(os.path.abspath(__file__)), "coco91_classes.txt"))
 
                 self.__model = torchvision.models.detection.retinanet_resnet50_fpn(
-                            pretrained=False, num_classes=91,
-                            pretrained_backbone = False
-                        )
+                    pretrained=False, num_classes=91,
+                    pretrained_backbone=False
+                )
             else:
                 raise ValueError(f"Invalid model type. Call setModelTypeAsYOLOv3(), setModelTypeAsTinyYOLOv3() or setModelTypeAsRetinaNet to set a model type before loading the model")
 
@@ -259,7 +260,7 @@ class ObjectDetection:
                 self.__model.to(self.__device).eval()
             except:
                 raise RuntimeError("Invalid weights!!!") from None
-    
+
     def CustomObjects(self, **kwargs):
 
         """
@@ -280,7 +281,7 @@ class ObjectDetection:
         all_objects_dict = {}
         for object_str in all_objects_str:
             all_objects_dict[object_str] = False
-        
+
         for karg in kwargs:
             if karg in all_objects_dict:
                 all_objects_dict[karg] = kwargs[karg]
@@ -289,17 +290,15 @@ class ObjectDetection:
 
         return all_objects_dict
 
-        
-
     def detectObjectsFromImage(self,
-                input_image: Union[str, np.ndarray, Image.Image],
-                output_image_path: str=None,
-                output_type: str ="file",
-                extract_detected_objects: bool=False, minimum_percentage_probability: int=50,
-                display_percentage_probability: bool=True, display_object_name: bool=True,
-                display_box: bool=True,
-                custom_objects: List=None
-               ) -> Union[List[List[Tuple[str, float, Dict[str, int]]]], np.ndarray, List[np.ndarray], List[str]]:
+                               input_image: Union[str, np.ndarray, Image.Image],
+                               output_image_path: str = None,
+                               output_type: str = "file",
+                               extract_detected_objects: bool = False, minimum_percentage_probability: int = 50,
+                               display_percentage_probability: bool = True, display_object_name: bool = True,
+                               display_box: bool = True,
+                               custom_objects: List = None
+                               ) -> Union[List[List[Tuple[str, float, Dict[str, int]]]], np.ndarray, List[np.ndarray], List[str]]:
         """
         Detects objects in an image using the unique classes provided
         by COCO.
@@ -317,35 +316,33 @@ class ObjectDetection:
         :returns: A list of tuples containing the label of detected object and the
         confidence.
         """
-        
-        
+
         self.__model.eval()
         if not self.__model_loaded:
             if self.__model_path:
                 warnings.warn(
-                        "Model path has changed but pretrained weights in the"
-                        " new path is yet to be loaded.",
-                        ResourceWarning
-                    )
+                    "Model path has changed but pretrained weights in the"
+                    " new path is yet to be loaded.",
+                    ResourceWarning
+                )
             else:
                 raise RuntimeError(
-                        "Model path isn't set, pretrained weights aren't used."
-                    )
-        predictions = defaultdict(lambda : [])
-        
+                    "Model path isn't set, pretrained weights aren't used."
+                )
+        predictions = defaultdict(lambda: [])
 
         if self.__model_type == "yolov3" or self.__model_type == "tiny-yolov3":
             fnames, original_imgs, input_dims, imgs = self.__load_image_yolo(input_image)
-            
+
             with torch.no_grad():
                 output = self.__model(imgs)
-            
+
             output = get_predictions(
-                    pred=output.to(self.__device), num_classes=len(self.__classes),
-                    nms_confidence_level=self.__nms_score, objectness_confidence= self.__objectness_score,
-                    device=self.__device
-                )
-            
+                pred=output.to(self.__device), num_classes=len(self.__classes),
+                nms_confidence_level=self.__nms_score, objectness_confidence=self.__objectness_score,
+                device=self.__device
+            )
+
             if output is None:
                 if output_type == "array":
                     if extract_detected_objects:
@@ -357,18 +354,18 @@ class ObjectDetection:
                         return original_imgs[0], []
                     else:
                         return []
-            
+
             # scale the output to match the dimension of the original image
             input_dims = torch.index_select(input_dims, 0, output[:, 0].long())
             scaling_factor = torch.min(416 / input_dims, 1)[0].view(-1, 1)
-            output[:, [1,3]] -= (416 - (scaling_factor * input_dims[:, 0].view(-1,1))) / 2
-            output[:, [2,4]] -= (416 - (scaling_factor * input_dims[:, 1].view(-1,1))) / 2
+            output[:, [1, 3]] -= (416 - (scaling_factor * input_dims[:, 0].view(-1, 1))) / 2
+            output[:, [2, 4]] -= (416 - (scaling_factor * input_dims[:, 1].view(-1, 1))) / 2
             output[:, 1:5] /= scaling_factor
 
-            #clip bounding box for those that extended outside the detected image.
+            # clip bounding box for those that extended outside the detected image.
             for idx in range(output.shape[0]):
-                output[idx, [1,3]] = torch.clamp(output[idx, [1,3]], 0.0, input_dims[idx, 0])
-                output[idx, [2,4]] = torch.clamp(output[idx, [2,4]], 0.0, input_dims[idx, 1])
+                output[idx, [1, 3]] = torch.clamp(output[idx, [1, 3]], 0.0, input_dims[idx, 0])
+                output[idx, [2, 4]] = torch.clamp(output[idx, [2, 4]], 0.0, input_dims[idx, 1])
 
             for pred in output:
                 pred_label = self.__classes[int(pred[-1])]
@@ -379,15 +376,15 @@ class ObjectDetection:
                     else:
                         continue
                 predictions[int(pred[0])].append((
-                        pred_label,
-                        float(pred[-2]),
-                        {k:v for k,v in zip(["x1", "y1", "x2", "y2"], map(int, pred[1:5]))},
-                    ))
+                    pred_label,
+                    float(pred[-2]),
+                    {k: v for k, v in zip(["x1", "y1", "x2", "y2"], map(int, pred[1:5]))},
+                ))
         elif self.__model_type == "retinanet":
             fnames, original_imgs, scaled_images = self.__load_image_retinanet(input_image)
             with torch.no_grad():
                 output = self.__model(scaled_images)
-            
+
             if output is None:
                 if output_type == "array":
                     if extract_detected_objects:
@@ -413,13 +410,13 @@ class ObjectDetection:
                                 continue
 
                         predictions[idx].append(
-                                (
-                                    pred_label,
-                                    pred["scores"][id].item(),
-                                    {k:v for k,v in zip(["x1", "y1", "x2", "y2"], map(int, pred["boxes"][id]))}
-                                )
+                            (
+                                pred_label,
+                                pred["scores"][id].item(),
+                                {k: v for k, v in zip(["x1", "y1", "x2", "y2"], map(int, pred["boxes"][id]))}
                             )
-        
+                        )
+
         # Render detection on copy of input image
         original_input_image = None
         output_image_array = None
@@ -433,32 +430,40 @@ class ObjectDetection:
                     if percentage_conf < minimum_percentage_probability:
                         continue
 
+                    # Fix custom object drawing types that are not in the list
+                    pred_label = self.__classes[int(pred[-1])]
+                    if custom_objects:
+                        if pred_label.replace(" ", "_") in custom_objects.keys():
+                            if not custom_objects[pred_label.replace(" ", "_")]:
+                                continue
+                        else:
+                            continue
+
                     displayed_label = ""
                     if display_object_name:
                         displayed_label = f"{self.__classes[int(pred[-1].item())]} : "
                     if display_percentage_probability:
                         displayed_label += f" {percentage_conf}%"
+                    original_imgs[int(pred[0].item())] = draw_bbox_and_label(pred[1:5].int(),
+                                                                             displayed_label,
+                                                                             original_imgs[int(pred[0].item())],
+                                                                             display_box
+                                                                             )
 
-
-                    original_imgs[int(pred[0].item())] = draw_bbox_and_label(pred[1:5].int() if display_box else None,
-                        displayed_label,
-                        original_imgs[int(pred[0].item())]
-                    )
-                
                 output_image_array = cv2.cvtColor(original_imgs[0], cv2.COLOR_RGB2BGR)
-                
+
         elif self.__model_type == "retinanet":
             original_input_image = tensor_to_ndarray(original_imgs[0].div(255.0))
             original_input_image = cv2.cvtColor(original_input_image, cv2.COLOR_RGB2BGR)
             for idx, pred in predictions.items():
-                
+
                 max_dim = max(list(original_imgs[idx].size()))
 
                 for label, score, bbox in pred:
                     percentage_conf = round(score * 100, 2)
                     if percentage_conf < minimum_percentage_probability:
                         continue
-                    
+
                     displayed_label = ""
                     if display_object_name:
                         displayed_label = f"{label} :"
@@ -476,16 +481,14 @@ class ObjectDetection:
                         fill=False,
                         font_size=int(max_dim / 30)
                     )
-                
+
             output_image_array = tensor_to_ndarray(original_imgs[0].div(255.0))
             output_image_array = cv2.cvtColor(output_image_array, cv2.COLOR_RGB2BGR)
-        
 
         # Format predictions for function reponse
         predictions_batch = list(predictions.values())
         predictions_list = predictions_batch[0] if len(predictions_batch) > 0 else []
         min_probability = minimum_percentage_probability / 100
-
 
         if output_type == "file":
             if output_image_path:
@@ -495,36 +498,34 @@ class ObjectDetection:
                     extraction_dir = ".".join(output_image_path.split(".")[:-1]) + "-extracted"
                     os.mkdir(extraction_dir)
                     count = 0
-                    for obj_prediction in predictions_list: 
+                    for obj_prediction in predictions_list:
                         if obj_prediction[1] >= min_probability:
                             count += 1
                             extracted_path = os.path.join(
-                                extraction_dir, 
+                                extraction_dir,
                                 ".".join(os.path.basename(output_image_path).split(".")[:-1]) + f"-{count}.jpg"
                             )
                             obj_bbox = obj_prediction[2]
-                            cv2.imwrite(extracted_path, original_input_image[obj_bbox["y1"] : obj_bbox["y2"], obj_bbox["x1"] : obj_bbox["x2"]])
+                            cv2.imwrite(extracted_path, original_input_image[obj_bbox["y1"]: obj_bbox["y2"], obj_bbox["x1"]: obj_bbox["x2"]])
 
                             extracted_objects.append(extracted_path)
 
         elif output_type == "array":
             if extract_detected_objects:
-                for obj_prediction in predictions_list: 
+                for obj_prediction in predictions_list:
                     if obj_prediction[1] >= min_probability:
                         obj_bbox = obj_prediction[2]
 
-                        extracted_objects.append(original_input_image[obj_bbox["y1"] : obj_bbox["y2"], obj_bbox["x1"] : obj_bbox["x2"]])
+                        extracted_objects.append(original_input_image[obj_bbox["y1"]: obj_bbox["y2"], obj_bbox["x1"]: obj_bbox["x2"]])
         else:
             raise ValueError(f"Invalid output_type '{output_type}'. Supported values are 'file' and 'array' ")
 
-        
         predictions_list = [
             {
                 "name": prediction[0], "percentage_probability": round(prediction[1] * 100, 2),
                 "box_points": [prediction[2]["x1"], prediction[2]["y1"], prediction[2]["x2"], prediction[2]["y2"]]
             } for prediction in predictions_list if prediction[1] >= min_probability
         ]
-
 
         if output_type == "array":
             if extract_detected_objects:
@@ -558,10 +559,10 @@ class VideoObjectDetection:
 
     def setModelTypeAsYOLOv3(self):
         self.__detector.setModelTypeAsYOLOv3()
-    
+
     def setModelTypeAsTinyYOLOv3(self):
         self.__detector.setModelTypeAsTinyYOLOv3()
-    
+
     def setModelTypeAsRetinaNet(self):
         self.__detector.setModelTypeAsRetinaNet()
 
@@ -571,10 +572,10 @@ class VideoObjectDetection:
 
     def loadModel(self):
         self.__detector.loadModel()
-    
+
     def useCPU(self):
         self.__detector.useCPU()
-    
+
     def CustomObjects(self, **kwargs):
         return self.__detector.CustomObjects(**kwargs)
 
@@ -582,7 +583,7 @@ class VideoObjectDetection:
                                frame_detection_interval=1, minimum_percentage_probability=50, log_progress=False,
                                display_percentage_probability=True, display_object_name=True, display_box=True, save_detected_video=True,
                                per_frame_function=None, per_second_function=None, per_minute_function=None,
-                               video_complete_function=None, return_detected_frame=False, detection_timeout = None, custom_objects=None):
+                               video_complete_function=None, return_detected_frame=False, detection_timeout=None, custom_objects=None):
 
         """
         'detectObjectsFromVideo()' function is used to detect objects observable in the given video path or a camera input:
@@ -666,16 +667,16 @@ class VideoObjectDetection:
 
                 output_frames_dict = {}
                 output_frames_count_dict = {}
-
-                input_video = cv2.VideoCapture(input_file_path)
-                if (camera_input != None):
+                if input_file_path:
+                    input_video = cv2.VideoCapture(input_file_path)
+                if camera_input:
                     input_video = camera_input
 
                 output_video_filepath = output_file_path + '.mp4'
 
                 frame_width = int(input_video.get(3))
                 frame_height = int(input_video.get(4))
-                output_video = cv2.VideoWriter(output_video_filepath, cv2.VideoWriter_fourcc(*"MP4V"),
+                output_video = cv2.VideoWriter(output_video_filepath, cv2.VideoWriter_fourcc(*"mp4v"),
                                                frames_per_second,
                                                (frame_width, frame_height))
 
@@ -732,7 +733,6 @@ class VideoObjectDetection:
 
                         output_frames_count_dict[counting] = output_objects_count
 
-                        
                         if (save_detected_video == True):
                             output_video.write(detected_copy)
 

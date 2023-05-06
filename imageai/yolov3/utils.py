@@ -7,18 +7,19 @@ import cv2 as cv
 from torchvision.ops import batched_nms
 
 
-def draw_bbox_and_label(x : torch.Tensor, label : str, img : np.ndarray) -> np.ndarray:
+def draw_bbox_and_label(x : torch.Tensor, label : str, img : np.ndarray,display_box:bool) -> np.ndarray:
     """
     Draws the predicted bounding boxes on the original image.
     """
     x1,y1,x2,y2 = tuple(map(int, x))
-    if x is not None:
+    #if x is not None:
+    if display_box:
         img = cv.rectangle(img, (x1,y1), (x2,y2), (0, 255, 0), 1)
     t_size = cv.getTextSize(label, cv.FONT_HERSHEY_PLAIN, 1, 1)[0]
     c2 = (x1 + t_size[0] + 3, y1 + t_size[1] + 4)
     img = cv.putText(img, label, (x1, y1+t_size[1]+4), cv.FONT_HERSHEY_PLAIN, 1, (0,0,255), 1)
 
-    return img 
+    return img
 
 def letterbox_image(
         image : np.ndarray,
@@ -71,7 +72,7 @@ def bbox_iou(bbox1 : torch.Tensor, bbox2 : torch.Tensor, device="cpu"):
 
     b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
     b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
-    
+
     return inter_area / (b1_area + b2_area - inter_area)
 
 def transform_prediction(
@@ -143,7 +144,7 @@ def transform_prediction(
 
     x_y_offset = torch.cat([x_offset, y_offset], dim=1).repeat(1, num_anchors).view(-1,2).unsqueeze(0)
     pred[:, :, :2] += x_y_offset
-    
+
     # transform height and width
     anchors = torch.FloatTensor(anchors).to(device)
     anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
